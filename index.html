@@ -81,11 +81,15 @@
             transition: background 0.5s ease;
         }
         
-        /* PLAYER IS NORMAL */
+        /* PLAYER (LEFT) - Always faces Right */
         #p-box { transform: scaleX(1); }
         
-        /* ENEMY IS FLIPPED TO FACE PLAYER */
+        /* ENEMY (RIGHT) - Flipped to always face Left */
         #e-box { transform: scaleX(-1); }
+
+        /* ORIENTATION FIX FOR WATER, GRASS, ELEC IMAGES */
+        /* Assuming your original Water, Grass, Elec images face LEFT, we flip them to face RIGHT for the Player side */
+        .flip-right { transform: scaleX(-1) !important; }
 
         .sprite-box { width: 130px; height: 130px; background: rgba(26, 26, 46, 0.4); border-radius: 15px; display: flex; align-items: center; justify-content: center; transition: 0.3s; overflow: hidden; border: 2px solid rgba(255,255,255,0.1); backdrop-filter: blur(2px); }
         .sprite-box img { width: 100%; height: 100%; object-fit: cover; }
@@ -100,14 +104,13 @@
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
         .cd-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--gold); }
 
-        /* Animation adjustments for positions */
-        .attack-left { animation: atkL 0.4s ease; } /* Player lunges right */
-        .attack-right { animation: atkR 0.4s ease; } /* Enemy lunges left */
+        .attack-left { animation: atkL 0.4s ease; }
+        .attack-right { animation: atkR 0.4s ease; }
         .shake { animation: shk 0.3s ease; }
         .crit-shake { animation: shk 0.15s ease infinite; }
 
         @keyframes atkL { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(35px); } }
-        /* Keep scaleX(-1) during animation so enemy doesn't flip back while attacking */
+        /* Enemy stays flipped while lunging */
         @keyframes atkR { 0%, 100% { transform: scaleX(-1) translateX(0); } 50% { transform: scaleX(-1) translateX(35px); } }
         @keyframes shk { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 
@@ -131,10 +134,10 @@
     <div id="selection-screen" class="screen active">
         <h1>Select Your Hero</h1>
         <div class="grid">
-            <div class="char-card" onclick="pickHero('FIRE')"><div class="img-slot"><img src="fire.png" onerror="this.style.display='none'"></div><strong>FIRE TYPE</strong></div>
-            <div class="char-card" onclick="pickHero('WATER')"><div class="img-slot"><img src="water.png" onerror="this.style.display='none'"></div><strong>WATER TYPE</strong></div>
-            <div class="char-card" onclick="pickHero('GRASS')"><div class="img-slot"><img src="grass.png" onerror="this.style.display='none'"></div><strong>GRASS TYPE</strong></div>
-            <div class="char-card" onclick="pickHero('ELECTRIC')"><div class="img-slot"><img src="elec.png" onerror="this.style.display='none'"></div><strong>ELECTRIC TYPE</strong></div>
+            <div class="char-card" onclick="pickHero('FIRE')"><div class="img-slot"><img src="fire.png"></div><strong>FIRE TYPE</strong></div>
+            <div class="char-card" onclick="pickHero('WATER')"><div class="img-slot"><img src="water.png"></div><strong>WATER TYPE</strong></div>
+            <div class="char-card" onclick="pickHero('GRASS')"><div class="img-slot"><img src="grass.png"></div><strong>GRASS TYPE</strong></div>
+            <div class="char-card" onclick="pickHero('ELECTRIC')"><div class="img-slot"><img src="elec.png"></div><strong>ELECTRIC TYPE</strong></div>
         </div>
     </div>
 
@@ -225,6 +228,8 @@
 
     function pickHero(type) {
         player = { type, allMoves: MOVES_DB[type], img: type.toLowerCase()+'.png' };
+        if(type === 'ELECTRIC') player.img = 'elec.png';
+        
         selectedMoves = [];
         const arena = document.getElementById('arena');
         
@@ -268,13 +273,30 @@
         selectedMoves.forEach(m => m.cd = 0);
         const types = Object.keys(MOVES_DB);
         const randT = types[Math.floor(Math.random()*4)];
-        enemy = { type: randT, moves: MOVES_DB[randT].sort(() => 0.5 - Math.random()).slice(0, 4), img: randT.toLowerCase()+'.png' };
+        
+        let enemyImg = randT.toLowerCase() + '.png';
+        if (randT === 'ELECTRIC') enemyImg = 'elec.png';
+
+        enemy = { type: randT, moves: MOVES_DB[randT].sort(() => 0.5 - Math.random()).slice(0, 4), img: enemyImg };
+        
         document.getElementById('loadout-screen').classList.remove('active');
         document.getElementById('battle-screen').classList.add('active');
         document.getElementById('p-name').innerText = player.type;
         document.getElementById('e-name').innerText = enemy.type;
-        document.getElementById('p-img').src = player.img;
-        document.getElementById('e-img').src = enemy.img;
+        
+        const pImgEl = document.getElementById('p-img');
+        const eImgEl = document.getElementById('e-img');
+        
+        pImgEl.src = player.img;
+        eImgEl.src = enemy.img;
+
+        // LOGIC: If player is NOT Fire (Water, Grass, Elec), flip to face Right
+        if(player.type !== 'FIRE') pImgEl.classList.add('flip-right');
+        else pImgEl.classList.remove('flip-right');
+
+        // LOGIC: If enemy is NOT Fire (Water, Grass, Elec), they naturally face Left in e-box flip.
+        // If enemy IS Fire, it will flip to face Left because of the e-box scaleX(-1).
+        
         updateUI();
         renderBattleMoves();
     }
@@ -361,7 +383,10 @@
     }
 
     function log(m) { document.getElementById('battle-log').innerText = m; }
-    function clearAnims() { ['p-box','e-box'].forEach(id => document.getElementById(id).classList.remove('attack-left','attack-right','shake', 'crit-shake')); }
+    function clearAnims() { 
+        document.getElementById('p-box').classList.remove('attack-left','shake', 'crit-shake');
+        document.getElementById('e-box').classList.remove('attack-right','shake', 'crit-shake');
+    }
     function endBattle(win) {
         const overlay = document.getElementById('result-overlay');
         overlay.style.display = 'flex';
