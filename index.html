@@ -28,6 +28,21 @@
             transition: background 0.8s ease;
         }
 
+        /* Stats Bar */
+        #stats-bar {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            border: 1px solid #0f3460;
+        }
+        .stat-win { color: var(--gold); }
+        .stat-loss { color: var(--hp-red); }
+
         #skill-info-window {
             position: absolute;
             right: -250px;
@@ -81,14 +96,8 @@
             transition: background 0.5s ease;
         }
         
-        /* PLAYER (LEFT) - Always faces Right */
         #p-box { transform: scaleX(1); }
-        
-        /* ENEMY (RIGHT) - Flipped to always face Left */
         #e-box { transform: scaleX(-1); }
-
-        /* ORIENTATION FIX FOR WATER, GRASS, ELEC IMAGES */
-        /* Assuming your original Water, Grass, Elec images face LEFT, we flip them to face RIGHT for the Player side */
         .flip-right { transform: scaleX(-1) !important; }
 
         .sprite-box { width: 130px; height: 130px; background: rgba(26, 26, 46, 0.4); border-radius: 15px; display: flex; align-items: center; justify-content: center; transition: 0.3s; overflow: hidden; border: 2px solid rgba(255,255,255,0.1); backdrop-filter: blur(2px); }
@@ -110,7 +119,6 @@
         .crit-shake { animation: shk 0.15s ease infinite; }
 
         @keyframes atkL { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(35px); } }
-        /* Enemy stays flipped while lunging */
         @keyframes atkR { 0%, 100% { transform: scaleX(-1) translateX(0); } 50% { transform: scaleX(-1) translateX(35px); } }
         @keyframes shk { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 
@@ -120,6 +128,11 @@
 <body>
 
 <div id="game-viewport">
+    <div id="stats-bar">
+        <span class="stat-win">🏆 STREAK: <span id="streak-val">0</span></span>
+        <span class="stat-loss">💀 DEFEATS: <span id="defeat-val">0</span></span>
+    </div>
+
     <div id="skill-info-window">
         <div id="info-header" class="info-header"></div>
         <div id="info-lore" class="info-lore"></div>
@@ -128,7 +141,8 @@
 
     <div id="result-overlay">
         <h1 id="res-title"></h1>
-        <button class="btn" style="background:var(--gold); color:black; padding:15px 40px" onclick="resetGame()">NEXT CHALLENGE</button>
+        <p id="res-msg" style="margin-bottom: 20px;"></p>
+        <button class="btn" style="background:var(--gold); color:black; padding:15px 40px" onclick="resetGame()">CONTINUE JOURNEY</button>
     </div>
 
     <div id="selection-screen" class="screen active">
@@ -210,6 +224,7 @@
     const CHART = { 'FIRE':{'GRASS':2,'WATER':0.5}, 'WATER':{'FIRE':2,'GRASS':0.5}, 'GRASS':{'WATER':2,'FIRE':0.5}, 'ELECTRIC':{'WATER':2} };
 
     let player, enemy, pHP=100, eHP=100, pShield=false, eShield=false, selectedMoves=[];
+    let winStreak = 0, totalDefeats = 0;
 
     function showSkillInfo(move) {
         const win = document.getElementById('skill-info-window');
@@ -229,17 +244,14 @@
     function pickHero(type) {
         player = { type, allMoves: MOVES_DB[type], img: type.toLowerCase()+'.png' };
         if(type === 'ELECTRIC') player.img = 'elec.png';
-        
         selectedMoves = [];
         const arena = document.getElementById('arena');
-        
         switch(type) {
             case 'FIRE': arena.style.backgroundImage = "url('fire_bg.png')"; break;
             case 'WATER': arena.style.backgroundImage = "url('water_bg.png')"; break;
             case 'GRASS': arena.style.backgroundImage = "url('grass_bg.png')"; break;
             case 'ELECTRIC': arena.style.backgroundImage = "url('elec_bg.png')"; break;
         }
-
         document.getElementById('selection-screen').classList.remove('active');
         document.getElementById('loadout-screen').classList.add('active');
         const grid = document.getElementById('move-selection-grid');
@@ -253,6 +265,8 @@
             div.onclick = () => toggleMove(i, div);
             grid.appendChild(div);
         });
+        document.getElementById('move-count').innerText = "0";
+        document.getElementById('start-btn').disabled = true;
     }
 
     function toggleMove(index, el) {
@@ -273,32 +287,23 @@
         selectedMoves.forEach(m => m.cd = 0);
         const types = Object.keys(MOVES_DB);
         const randT = types[Math.floor(Math.random()*4)];
-        
         let enemyImg = randT.toLowerCase() + '.png';
         if (randT === 'ELECTRIC') enemyImg = 'elec.png';
-
         enemy = { type: randT, moves: MOVES_DB[randT].sort(() => 0.5 - Math.random()).slice(0, 4), img: enemyImg };
-        
         document.getElementById('loadout-screen').classList.remove('active');
         document.getElementById('battle-screen').classList.add('active');
         document.getElementById('p-name').innerText = player.type;
         document.getElementById('e-name').innerText = enemy.type;
-        
         const pImgEl = document.getElementById('p-img');
         const eImgEl = document.getElementById('e-img');
-        
         pImgEl.src = player.img;
         eImgEl.src = enemy.img;
-
-        // LOGIC: If player is NOT Fire (Water, Grass, Elec), flip to face Right
         if(player.type !== 'FIRE') pImgEl.classList.add('flip-right');
         else pImgEl.classList.remove('flip-right');
-
-        // LOGIC: If enemy is NOT Fire (Water, Grass, Elec), they naturally face Left in e-box flip.
-        // If enemy IS Fire, it will flip to face Left because of the e-box scaleX(-1).
-        
         updateUI();
+        log("A challenger appears!");
         renderBattleMoves();
+        document.getElementById('move-controls').style.pointerEvents = 'all';
     }
 
     function renderBattleMoves() {
@@ -325,7 +330,6 @@
     function executeTurn(move) {
         document.getElementById('move-controls').style.pointerEvents = 'none';
         hideSkillInfo();
-        
         if(move.t === 'atk') {
             document.getElementById('p-box').classList.add('attack-left');
             let dmg = move.p * (CHART[player.type]?.[enemy.type] || 1);
@@ -333,8 +337,8 @@
             if(isCrit) dmg *= 2;
             if(eShield) { dmg *= 0.5; eShield = false; }
             eHP -= dmg;
-            log(isCrit ? `💥 CRITICAL HIT! ${move.n} did massive damage!` : `You used ${move.n}!`);
-            setTimeout(() => { document.getElementById('e-box').classList.add(isCrit ? 'crit-shake' : 'shake'); }, 200);
+            log(isCrit ? `💥 CRITICAL! ${move.n} did massive damage!` : `You used ${move.n}!`);
+            setTimeout(() => document.getElementById('e-box').classList.add(isCrit ? 'crit-shake' : 'shake'), 200);
         } else if(move.t === 'heal') {
             pHP = Math.min(100, pHP + move.p);
             move.cd = 3; 
@@ -344,11 +348,9 @@
             move.cd = 3; 
             log(`You raised a shield!`);
         }
-        
         selectedMoves.forEach(m => { if(m.cd > 0) m.cd--; });
         updateUI();
         if(eHP <= 0) return setTimeout(() => endBattle(true), 600);
-        
         setTimeout(() => {
             clearAnims();
             const eMove = enemy.moves[Math.floor(Math.random()*4)];
@@ -359,7 +361,7 @@
                 if(isEnemyCrit) dmg *= 2;
                 if(pShield) { dmg *= 0.5; pShield = false; }
                 pHP -= dmg;
-                log(isEnemyCrit ? `⚠️ CRITICAL HIT! Enemy ${eMove.n} hit hard!` : `Enemy used ${eMove.n}!`);
+                log(isEnemyCrit ? `⚠️ CRITICAL! Enemy ${eMove.n} hit hard!` : `Enemy used ${eMove.n}!`);
                 setTimeout(() => document.getElementById('p-box').classList.add(isEnemyCrit ? 'crit-shake' : 'shake'), 200);
             } else if(eMove.t === 'heal') { 
                 eHP = Math.min(100, eHP + eMove.p); 
@@ -380,6 +382,8 @@
         document.getElementById('e-hp-fill').style.width = Math.max(0, eHP) + "%";
         document.getElementById('p-shield').className = pShield ? "status-tag shield-active" : "status-tag";
         document.getElementById('e-shield').className = eShield ? "status-tag shield-active" : "status-tag";
+        document.getElementById('streak-val').innerText = winStreak;
+        document.getElementById('defeat-val').innerText = totalDefeats;
     }
 
     function log(m) { document.getElementById('battle-log').innerText = m; }
@@ -387,17 +391,41 @@
         document.getElementById('p-box').classList.remove('attack-left','shake', 'crit-shake');
         document.getElementById('e-box').classList.remove('attack-right','shake', 'crit-shake');
     }
+
     function endBattle(win) {
         const overlay = document.getElementById('result-overlay');
         overlay.style.display = 'flex';
-        document.getElementById('res-title').innerText = win ? "VICTORY!" : "DEFEATED";
-        document.getElementById('res-title').style.color = win ? "var(--gold)" : "var(--hp-red)";
+        
+        if (win) {
+            winStreak++;
+            document.getElementById('res-title').innerText = "VICTORY!";
+            document.getElementById('res-title').style.color = "var(--gold)";
+            document.getElementById('res-msg').innerText = `You defeated the ${enemy.type} enemy! Streak: ${winStreak}`;
+        } else {
+            winStreak = 0; // Reset streak on loss
+            totalDefeats++;
+            document.getElementById('res-title').innerText = "DEFEATED";
+            document.getElementById('res-title').style.color = "var(--hp-red)";
+            document.getElementById('res-msg').innerText = "Your journey ends here... for now.";
+        }
+        updateUI();
     }
+
     function resetGame() {
-        document.getElementById('arena').style.backgroundImage = 'none';
+        pHP = 100;
+        eHP = 100;
+        pShield = false;
+        eShield = false;
+        selectedMoves = [];
+        Object.values(MOVES_DB).forEach(typeMoves => {
+            typeMoves.forEach(m => m.cd = 0);
+        });
         document.getElementById('result-overlay').style.display = 'none';
         document.getElementById('battle-screen').classList.remove('active');
         document.getElementById('selection-screen').classList.add('active');
+        document.getElementById('arena').style.backgroundImage = 'none';
+        clearAnims();
+        updateUI();
     }
 </script>
 </body>
