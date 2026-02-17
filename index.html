@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Type-Battler: Champion Edition</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --card: #16213e;
+            --accent: #e94560;
+            --text: #ffffff;
+            --hp-green: #4caf50;
+            --hp-red: #ff5252;
+            --gold: #fbc531;
+            --floor: #1a1a2e;
+        }
+
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
+        #game-viewport { 
+            width: 620px; 
+            background: var(--card); 
+            border: 3px solid #0f3460; 
+            border-radius: 20px; 
+            padding: 25px; 
+            position: relative; 
+            box-shadow: 0 10px 50px rgba(0,0,0,0.6); 
+            transition: background 0.8s ease;
+        }
+
+        #skill-info-window {
+            position: absolute;
+            right: -250px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 220px;
+            background: #0f3460;
+            border: 2px solid var(--gold);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            z-index: 1000;
+            text-align: left;
+        }
+        #skill-info-window.active { opacity: 1; right: -230px; }
+        .info-header { color: var(--gold); font-weight: bold; font-size: 1.1rem; border-bottom: 1px solid #333; margin-bottom: 8px; padding-bottom: 4px; }
+        .info-lore { font-style: italic; font-size: 0.8rem; color: #aaa; margin-bottom: 10px; line-height: 1.3; }
+        .info-data { font-size: 0.85rem; border-top: 1px solid #333; padding-top: 8px; }
+
+        .screen { display: none; text-align: center; }
+        .active { display: block; }
+
+        .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 15px; }
+        .char-card, .move-card { background: #0f3460; padding: 12px; border-radius: 12px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; }
+        .char-card:hover, .move-card:hover { border-color: var(--accent); }
+        .selected-move { border-color: var(--gold) !important; background: #1a1a2e; }
+
+        .img-slot { aspect-ratio: 1 / 1; height: 140px; background: #1a1a2e; margin: 0 auto 10px auto; border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #16213e; }
+        .img-slot img { width: 100%; height: 100%; object-fit: cover; }
+
+        .battle-header { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .hp-bar { width: 160px; height: 14px; background: #333; border-radius: 7px; border: 1px solid #444; overflow: hidden; }
+        .hp-fill { height: 100%; width: 100%; background: var(--hp-green); transition: 0.4s; }
+        
+        .battle-area { 
+            height: 180px; 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center; 
+            border-radius: 15px;
+            margin-bottom: 10px;
+            background-color: var(--floor);
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border: 2px solid rgba(255,255,255,0.2);
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+            transition: background 0.5s ease;
+        }
+        
+        /* PLAYER IS NORMAL */
+        #p-box { transform: scaleX(1); }
+        
+        /* ENEMY IS FLIPPED TO FACE PLAYER */
+        #e-box { transform: scaleX(-1); }
+
+        .sprite-box { width: 130px; height: 130px; background: rgba(26, 26, 46, 0.4); border-radius: 15px; display: flex; align-items: center; justify-content: center; transition: 0.3s; overflow: hidden; border: 2px solid rgba(255,255,255,0.1); backdrop-filter: blur(2px); }
+        .sprite-box img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .status-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: none; margin-top: 5px; }
+        .shield-active { background: var(--gold); color: black; display: inline-block; }
+
+        #battle-log { background: #0f3460; padding: 10px; height: 45px; border-radius: 8px; margin: 10px 0; font-size: 0.9rem; border: 1px solid #333; }
+        .move-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+        .btn { position: relative; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; text-transform: uppercase; overflow: hidden; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .cd-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--gold); }
+
+        /* Animation adjustments for positions */
+        .attack-left { animation: atkL 0.4s ease; } /* Player lunges right */
+        .attack-right { animation: atkR 0.4s ease; } /* Enemy lunges left */
+        .shake { animation: shk 0.3s ease; }
+        .crit-shake { animation: shk 0.15s ease infinite; }
+
+        @keyframes atkL { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(35px); } }
+        /* Keep scaleX(-1) during animation so enemy doesn't flip back while attacking */
+        @keyframes atkR { 0%, 100% { transform: scaleX(-1) translateX(0); } 50% { transform: scaleX(-1) translateX(35px); } }
+        @keyframes shk { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
+
+        #result-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); border-radius:18px; display:none; flex-direction:column; align-items:center; justify-content:center; z-index:999; }
+    </style>
+</head>
+<body>
+
+<div id="game-viewport">
+    <div id="skill-info-window">
+        <div id="info-header" class="info-header"></div>
+        <div id="info-lore" class="info-lore"></div>
+        <div id="info-data" class="info-data"></div>
+    </div>
+
+    <div id="result-overlay">
+        <h1 id="res-title"></h1>
+        <button class="btn" style="background:var(--gold); color:black; padding:15px 40px" onclick="resetGame()">NEXT CHALLENGE</button>
+    </div>
+
+    <div id="selection-screen" class="screen active">
+        <h1>Select Your Hero</h1>
+        <div class="grid">
+            <div class="char-card" onclick="pickHero('FIRE')"><div class="img-slot"><img src="fire.png" onerror="this.style.display='none'"></div><strong>FIRE TYPE</strong></div>
+            <div class="char-card" onclick="pickHero('WATER')"><div class="img-slot"><img src="water.png" onerror="this.style.display='none'"></div><strong>WATER TYPE</strong></div>
+            <div class="char-card" onclick="pickHero('GRASS')"><div class="img-slot"><img src="grass.png" onerror="this.style.display='none'"></div><strong>GRASS TYPE</strong></div>
+            <div class="char-card" onclick="pickHero('ELECTRIC')"><div class="img-slot"><img src="elec.png" onerror="this.style.display='none'"></div><strong>ELECTRIC TYPE</strong></div>
+        </div>
+    </div>
+
+    <div id="loadout-screen" class="screen">
+        <h2 id="loadout-title">Customize Moves</h2>
+        <p>Choose 4 abilities to take into battle (<span id="move-count">0</span>/4)</p>
+        <div id="move-selection-grid" class="grid"></div>
+        <button id="start-btn" class="btn" style="margin-top:20px; width:100%" disabled onclick="initBattle()">ENTER ARENA</button>
+    </div>
+
+    <div id="battle-screen" class="screen">
+        <div class="battle-header">
+            <div>
+                <strong id="p-name"></strong>
+                <div class="hp-bar"><div id="p-hp-fill" class="hp-fill"></div></div>
+                <span id="p-shield" class="status-tag">🛡️ SHIELD</span>
+            </div>
+            <div style="text-align: right;">
+                <strong id="e-name"></strong>
+                <div class="hp-bar"><div id="e-hp-fill" class="hp-fill"></div></div>
+                <span id="e-shield" class="status-tag">🛡️ SHIELD</span>
+            </div>
+        </div>
+        <div class="battle-area" id="arena">
+            <div id="p-box" class="sprite-box"><img id="p-img" src=""></div>
+            <div style="color:var(--accent); font-weight:bold; font-size:1.5rem; text-shadow: 2px 2px 4px #000">VS</div>
+            <div id="e-box" class="sprite-box"><img id="e-img" src=""></div>
+        </div>
+        <div id="battle-log">The duel begins...</div>
+        <div class="move-grid" id="move-controls"></div>
+    </div>
+</div>
+
+<script>
+    const MOVES_DB = {
+        'FIRE': [
+            {n:'Ember', p:15, t:'atk', d:'Small flames that deal reliable damage.', l:'A basic spark technique used by fire-mages to light the dark paths of volcanic caves.'}, 
+            {n:'Fire Blast', p:35, t:'atk', d:'A massive blast of fire with high power.', l:'Unleashes a star-shaped explosion that incinerates everything in its central radius.'}, 
+            {n:'Flame Charge', p:22, t:'atk', d:'A physical fire tackle with moderate force.', l:'The user cloaks themselves in a thermal aura and tackles at high speeds.'},
+            {n:'Burn Up', p:45, t:'atk', d:'Unleashes all heat for maximum damage.', l:'A forbidden move that converts all internal thermal energy into one final pillar of flame.'}, 
+            {n:'Ignite Soul', p:30, t:'heal', d:'Inner warmth restores 30 HP. (2 Turn Cooldown)', l:'The user focuses their heartbeat to regenerate tissues via rapid cauterization.'}, 
+            {n:'Heat Veil', p:0, t:'def', d:'Steam shield: Next hit taken is halved. (2 Turn Cooldown)', l:'Creates a shimmering curtain of extreme heat that distorts and weakens incoming projectiles.'}
+        ],
+        'WATER': [
+            {n:'Bubble', p:15, t:'atk', d:'Light pressure bubbles that pop for damage.', l:'High-tension liquid spheres that create localized sonic booms upon popping.'}, 
+            {n:'Hydro Pump', p:35, t:'atk', d:'High-pressure water jet that blasts foes.', l:'A blast of water strong enough to pierce through solid steel plating.'}, 
+            {n:'Water Pulse', p:22, t:'atk', d:'Sends out a rhythmic wave of water.', l:'Creates ultrasonic vibrations within a jet of water to damage the enemy internally.'},
+            {n:'Tsunami', p:45, t:'atk', l:'Summons the weight of the entire ocean to crush the opponent.', d:'Absolute hydro-dominance dealing massive impact damage.'}, 
+            {n:'Aqua Ring', p:30, t:'heal', d:'Healing water swirls to restore 30 HP. (2 Turn Cooldown)', l:'Surrounds the user in a veil of life-giving water that accelerates natural recovery.'}, 
+            {n:'Mist Guard', p:0, t:'def', d:'Mist makes hits slide off, halving damage. (2 Turn Cooldown)', l:'Thick fog covers the area, causing enemy strikes to lose momentum and focus.'}
+        ],
+        'GRASS': [
+            {n:'Vine Whip', p:15, t:'atk', d:'Strikes the foe with thin, tough vines.', l:'Two long, whip-like vines are lashed at the target with surgical precision.'}, 
+            {n:'Solar Beam', p:35, t:'atk', d:'Concentrated light energy deals high damage.', l:'The user harvests photons from the sky and fires them as a concentrated beam of heat.'}, 
+            {n:'Razor Leaf', p:22, t:'atk', d:'Sharp-edged leaves slice the opponent.', l:'Launches diamond-hard leaves that rotate like saws to cut through defenses.'},
+            {n:'Petal Dance', p:45, t:'atk', d:'A beautiful but lethal storm of petals.', l:'A hypnotic cyclone of razor-sharp petals that overwhelms the target\'s senses.'}, 
+            {n:'Synthesis', p:30, t:'heal', d:'Photosynthesis restores 30 HP. (2 Turn Cooldown)', l:'Converts ambient light directly into biological energy to repair physical wounds.'}, 
+            {n:'Leaf Shield', p:0, t:'def', d:'Dense foliage absorbs 50% of the next hit. (2 Turn Cooldown)', l:'Interlocking magical leaves create a wooden barrier as strong as reinforced concrete.'}
+        ],
+        'ELECTRIC': [
+            {n:'Spark', p:15, t:'atk', d:'A quick electrical zap for light damage.', l:'A low-voltage discharge designed to disrupt the target\'s muscle movements.'}, 
+            {n:'Thunder', p:35, t:'atk', d:'Crashing lightning bolt with heavy power.', l:'Summons a literal bolt from the sky, striking with the power of a thousand storms.'}, 
+            {n:'Shock Wave', p:22, t:'atk', d:'A wave of electricity that cannot miss.', l:'A circular blast of electromagnetic energy that expands in all directions simultaneously.'},
+            {n:'Volt Tackle', p:45, t:'atk', d:'Maximum voltage charge for huge damage.', l:'The user becomes a living lightning bolt, charging through the enemy at terminal velocity.'}, 
+            {n:'Recharge', p:30, t:'heal', d:'Draws power from the air to restore 30 HP. (2 Turn Cooldown)', l:'Absorbs free electrons from the atmosphere to replenish internal energy reserves.'}, 
+            {n:'Static Field', p:0, t:'def', d:'Electrical field reduces next hit by 50%. (2 Turn Cooldown)', l:'An invisible wall of static electricity that pushes away and dampens incoming force.'}
+        ]
+    };
+
+    const CHART = { 'FIRE':{'GRASS':2,'WATER':0.5}, 'WATER':{'FIRE':2,'GRASS':0.5}, 'GRASS':{'WATER':2,'FIRE':0.5}, 'ELECTRIC':{'WATER':2} };
+
+    let player, enemy, pHP=100, eHP=100, pShield=false, eShield=false, selectedMoves=[];
+
+    function showSkillInfo(move) {
+        const win = document.getElementById('skill-info-window');
+        document.getElementById('info-header').innerText = move.n;
+        document.getElementById('info-lore').innerText = move.l;
+        document.getElementById('info-data').innerHTML = `
+            <strong>Type:</strong> ${move.t.toUpperCase()}<br>
+            <strong>Power:</strong> ${move.p > 0 ? move.p : 'Utility'}<br>
+            <strong>Status:</strong> ${move.cd > 0 ? 'COOLDOWN ('+move.cd+' turns)' : 'Ready'}<br>
+            <strong>Effect:</strong> ${move.d}
+        `;
+        win.classList.add('active');
+    }
+
+    function hideSkillInfo() { document.getElementById('skill-info-window').classList.remove('active'); }
+
+    function pickHero(type) {
+        player = { type, allMoves: MOVES_DB[type], img: type.toLowerCase()+'.png' };
+        selectedMoves = [];
+        const arena = document.getElementById('arena');
+        
+        switch(type) {
+            case 'FIRE': arena.style.backgroundImage = "url('fire_bg.png')"; break;
+            case 'WATER': arena.style.backgroundImage = "url('water_bg.png')"; break;
+            case 'GRASS': arena.style.backgroundImage = "url('grass_bg.png')"; break;
+            case 'ELECTRIC': arena.style.backgroundImage = "url('elec_bg.png')"; break;
+        }
+
+        document.getElementById('selection-screen').classList.remove('active');
+        document.getElementById('loadout-screen').classList.add('active');
+        const grid = document.getElementById('move-selection-grid');
+        grid.innerHTML = '';
+        player.allMoves.forEach((m, i) => {
+            const div = document.createElement('div');
+            div.className = 'move-card';
+            div.onmouseover = () => showSkillInfo(m);
+            div.onmouseout = hideSkillInfo;
+            div.innerHTML = `<strong>${m.n}</strong><br><small>${m.t=='atk'?'Dmg: '+m.p : m.t=='heal'?'Heal: '+m.p : 'Blocks 50%'}</small>`;
+            div.onclick = () => toggleMove(i, div);
+            grid.appendChild(div);
+        });
+    }
+
+    function toggleMove(index, el) {
+        const move = player.allMoves[index];
+        if (selectedMoves.includes(move)) {
+            selectedMoves = selectedMoves.filter(m => m !== move);
+            el.classList.remove('selected-move');
+        } else if (selectedMoves.length < 4) {
+            selectedMoves.push(move);
+            el.classList.add('selected-move');
+        }
+        document.getElementById('move-count').innerText = selectedMoves.length;
+        document.getElementById('start-btn').disabled = selectedMoves.length !== 4;
+    }
+
+    function initBattle() {
+        pHP=100; eHP=100; pShield=false; eShield=false;
+        selectedMoves.forEach(m => m.cd = 0);
+        const types = Object.keys(MOVES_DB);
+        const randT = types[Math.floor(Math.random()*4)];
+        enemy = { type: randT, moves: MOVES_DB[randT].sort(() => 0.5 - Math.random()).slice(0, 4), img: randT.toLowerCase()+'.png' };
+        document.getElementById('loadout-screen').classList.remove('active');
+        document.getElementById('battle-screen').classList.add('active');
+        document.getElementById('p-name').innerText = player.type;
+        document.getElementById('e-name').innerText = enemy.type;
+        document.getElementById('p-img').src = player.img;
+        document.getElementById('e-img').src = enemy.img;
+        updateUI();
+        renderBattleMoves();
+    }
+
+    function renderBattleMoves() {
+        const ctrl = document.getElementById('move-controls');
+        ctrl.innerHTML = '';
+        selectedMoves.forEach(m => {
+            const b = document.createElement('button');
+            b.className = 'btn';
+            b.innerText = m.n;
+            b.disabled = m.cd > 0;
+            if (m.cd > 0) {
+                const cdBox = document.createElement('div');
+                cdBox.className = 'cd-overlay';
+                cdBox.innerText = m.cd;
+                b.appendChild(cdBox);
+            }
+            b.onmouseover = () => showSkillInfo(m);
+            b.onmouseout = hideSkillInfo;
+            b.onclick = () => executeTurn(m);
+            ctrl.appendChild(b);
+        });
+    }
+
+    function executeTurn(move) {
+        document.getElementById('move-controls').style.pointerEvents = 'none';
+        hideSkillInfo();
+        
+        if(move.t === 'atk') {
+            document.getElementById('p-box').classList.add('attack-left');
+            let dmg = move.p * (CHART[player.type]?.[enemy.type] || 1);
+            let isCrit = Math.random() < 0.25;
+            if(isCrit) dmg *= 2;
+            if(eShield) { dmg *= 0.5; eShield = false; }
+            eHP -= dmg;
+            log(isCrit ? `💥 CRITICAL HIT! ${move.n} did massive damage!` : `You used ${move.n}!`);
+            setTimeout(() => { document.getElementById('e-box').classList.add(isCrit ? 'crit-shake' : 'shake'); }, 200);
+        } else if(move.t === 'heal') {
+            pHP = Math.min(100, pHP + move.p);
+            move.cd = 3; 
+            log(`You used ${move.n} and healed!`);
+        } else {
+            pShield = true;
+            move.cd = 3; 
+            log(`You raised a shield!`);
+        }
+        
+        selectedMoves.forEach(m => { if(m.cd > 0) m.cd--; });
+        updateUI();
+        if(eHP <= 0) return setTimeout(() => endBattle(true), 600);
+        
+        setTimeout(() => {
+            clearAnims();
+            const eMove = enemy.moves[Math.floor(Math.random()*4)];
+            if(eMove.t === 'atk') {
+                document.getElementById('e-box').classList.add('attack-right');
+                let dmg = eMove.p * (CHART[enemy.type]?.[player.type] || 1);
+                let isEnemyCrit = Math.random() < 0.25;
+                if(isEnemyCrit) dmg *= 2;
+                if(pShield) { dmg *= 0.5; pShield = false; }
+                pHP -= dmg;
+                log(isEnemyCrit ? `⚠️ CRITICAL HIT! Enemy ${eMove.n} hit hard!` : `Enemy used ${eMove.n}!`);
+                setTimeout(() => document.getElementById('p-box').classList.add(isEnemyCrit ? 'crit-shake' : 'shake'), 200);
+            } else if(eMove.t === 'heal') { 
+                eHP = Math.min(100, eHP + eMove.p); 
+                log(`Enemy used ${eMove.n} to recover!`);
+            } else { 
+                eShield = true; 
+                log(`Enemy used ${eMove.n} to defend!`);
+            }
+            updateUI();
+            renderBattleMoves();
+            if(pHP <= 0) return endBattle(false);
+            setTimeout(() => { clearAnims(); document.getElementById('move-controls').style.pointerEvents = 'all'; }, 400);
+        }, 1200);
+    }
+
+    function updateUI() {
+        document.getElementById('p-hp-fill').style.width = Math.max(0, pHP) + "%";
+        document.getElementById('e-hp-fill').style.width = Math.max(0, eHP) + "%";
+        document.getElementById('p-shield').className = pShield ? "status-tag shield-active" : "status-tag";
+        document.getElementById('e-shield').className = eShield ? "status-tag shield-active" : "status-tag";
+    }
+
+    function log(m) { document.getElementById('battle-log').innerText = m; }
+    function clearAnims() { ['p-box','e-box'].forEach(id => document.getElementById(id).classList.remove('attack-left','attack-right','shake', 'crit-shake')); }
+    function endBattle(win) {
+        const overlay = document.getElementById('result-overlay');
+        overlay.style.display = 'flex';
+        document.getElementById('res-title').innerText = win ? "VICTORY!" : "DEFEATED";
+        document.getElementById('res-title').style.color = win ? "var(--gold)" : "var(--hp-red)";
+    }
+    function resetGame() {
+        document.getElementById('arena').style.backgroundImage = 'none';
+        document.getElementById('result-overlay').style.display = 'none';
+        document.getElementById('battle-screen').classList.remove('active');
+        document.getElementById('selection-screen').classList.add('active');
+    }
+</script>
+</body>
+</html>
