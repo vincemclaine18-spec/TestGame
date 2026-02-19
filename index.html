@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Type-Battler: Champion Edition</title>
+    <title>Core Clash</title>
     <style>
         :root {
             --bg: #1a1a2e;
@@ -17,61 +17,149 @@
         }
 
         body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; overflow: hidden; }
-        #game-viewport { 
-            width: 620px; 
-            background: var(--card); 
-            border: 3px solid #0f3460; 
-            border-radius: 20px; 
-            padding: 25px; 
-            position: relative; 
-            box-shadow: 0 10px 50px rgba(0,0,0,0.6); 
-            transition: background 0.8s ease;
+        
+        /* --- TITLE SCREEN --- */
+        #title-screen {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #16213e 0%, #0a0a12 100%);
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            transition: opacity 0.8s ease;
+        }
+        #title-screen.hidden { opacity: 0; pointer-events: none; }
+
+        /* --- IDENTITY SCREEN --- */
+        #identity-screen {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #0a0a12;
+            z-index: 1500;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
 
-        /* Stats Bar */
-        #stats-bar {
-            display: flex;
-            justify-content: space-around;
-            background: rgba(0,0,0,0.3);
-            padding: 8px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-            font-weight: bold;
-            font-size: 0.9rem;
-            border: 1px solid #0f3460;
+        .name-input {
+            background: #16213e;
+            border: 2px solid var(--accent);
+            padding: 15px;
+            color: white;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            outline: none;
         }
+
+        /* --- PROFILE UI --- */
+        #profile-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--card);
+            border: 1px solid var(--gold);
+            color: white;
+            padding: 10px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 1100;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        #profile-modal {
+            position: absolute;
+            top: 75px;
+            left: 20px;
+            background: var(--card);
+            border: 2px solid var(--gold);
+            padding: 15px;
+            border-radius: 10px;
+            display: none;
+            z-index: 1100;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        }
+
+        .core-glow {
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(233, 69, 96, 0.2) 0%, transparent 70%);
+            animation: core-flicker 4s infinite alternate;
+            z-index: -1;
+        }
+
+        .game-logo { font-size: 5rem; font-weight: 900; text-transform: uppercase; letter-spacing: -2px; line-height: 0.9; text-align: center; margin-bottom: 10px; font-style: italic; }
+        .logo-top { color: var(--gold); display: block; filter: drop-shadow(0 0 10px rgba(251, 197, 49, 0.5)); }
+        .logo-bottom { color: var(--accent); display: block; margin-left: 40px; filter: drop-shadow(0 0 10px rgba(233, 69, 96, 0.5)); }
+
+        .game-subtitle { color: #aaa; font-size: 0.8rem; font-weight: bold; margin-bottom: 40px; letter-spacing: 5px; text-transform: uppercase; border-top: 1px solid #333; padding-top: 10px; }
+
+        .start-btn { background: transparent; color: white; padding: 12px 60px; font-size: 1.1rem; border-radius: 4px; cursor: pointer; border: 2px solid var(--text); font-weight: bold; transition: all 0.3s; text-transform: uppercase; letter-spacing: 2px; }
+        .start-btn:hover { background: var(--text); color: var(--bg); box-shadow: 0 0 20px rgba(255,255,255,0.4); }
+
+        /* --- RESULT/REMATCH UI --- */
+        #result-overlay { 
+            position: absolute; 
+            top: 0; left: 0; 
+            width: 100%; height: 100%; 
+            background: rgba(10, 10, 18, 0.95); 
+            backdrop-filter: blur(10px);
+            border-radius: 18px; 
+            display: none; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            z-index: 999; 
+            animation: fadeIn 0.5s ease;
+        }
+        #res-title { font-size: 3.5rem; margin: 0; text-transform: uppercase; font-style: italic; letter-spacing: -2px; }
+        .res-stats-box { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); padding: 20px; border-radius: 12px; margin: 20px 0; width: 70%; text-align: center; }
+        .rematch-btn { background: var(--gold); color: #000; padding: 18px 50px; font-size: 1.2rem; font-weight: 900; border: none; border-radius: 50px; cursor: pointer; text-transform: uppercase; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 0 20px rgba(251, 197, 49, 0.3); }
+        .rematch-btn:hover { transform: scale(1.05); box-shadow: 0 0 30px rgba(251, 197, 49, 0.5); }
+
+        /* --- MAIN VIEWPORT --- */
+        #game-viewport { width: 620px; background: var(--card); border: 3px solid #0f3460; border-radius: 20px; padding: 25px; position: relative; box-shadow: 0 10px 50px rgba(0,0,0,0.6); }
+
+        #stats-bar { display: flex; justify-content: space-around; background: rgba(0,0,0,0.3); padding: 8px; border-radius: 10px; margin-bottom: 15px; font-weight: bold; font-size: 0.9rem; border: 1px solid #0f3460; }
         .stat-win { color: var(--gold); }
         .stat-loss { color: var(--hp-red); }
 
-        #skill-info-window {
-            position: absolute;
-            right: -250px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 220px;
-            background: #0f3460;
-            border: 2px solid var(--gold);
-            border-radius: 15px;
-            padding: 15px;
-            box-shadow: 10px 10px 30px rgba(0,0,0,0.5);
-            opacity: 0;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            pointer-events: none;
-            z-index: 1000;
-            text-align: left;
-        }
+        #skill-info-window { position: absolute; right: -250px; top: 50%; transform: translateY(-50%); width: 220px; background: #0f3460; border: 2px solid var(--gold); border-radius: 15px; padding: 15px; box-shadow: 10px 10px 30px rgba(0,0,0,0.5); opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); pointer-events: none; z-index: 1000; }
         #skill-info-window.active { opacity: 1; right: -230px; }
-        .info-header { color: var(--gold); font-weight: bold; font-size: 1.1rem; border-bottom: 1px solid #333; margin-bottom: 8px; padding-bottom: 4px; }
-        .info-lore { font-style: italic; font-size: 0.8rem; color: #aaa; margin-bottom: 10px; line-height: 1.3; }
-        .info-data { font-size: 0.85rem; border-top: 1px solid #333; padding-top: 8px; }
 
         .screen { display: none; text-align: center; }
         .active { display: block; }
 
         .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 15px; }
-        .char-card, .move-card { background: #0f3460; padding: 12px; border-radius: 12px; border: 2px solid transparent; cursor: pointer; transition: 0.2s; }
-        .char-card:hover, .move-card:hover { border-color: var(--accent); }
-        .selected-move { border-color: var(--gold) !important; background: #1a1a2e; }
+
+        .char-card, .move-card { 
+            background: rgba(15, 52, 96, 0.6); 
+            padding: 12px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255,255,255,0.1); 
+            cursor: pointer; 
+            transition: 0.3s; 
+        }
+        .char-card:hover, .move-card:hover { 
+            background: var(--accent);
+            transform: translateY(-5px);
+            border-color: rgba(255,255,255,0.5);
+            box-shadow: 0 5px 15px rgba(233, 69, 96, 0.4);
+        }
+
+        .selected-move { border-color: var(--gold) !important; background: rgba(251, 197, 49, 0.2) !important; box-shadow: 0 0 15px rgba(251, 197, 49, 0.3); }
 
         .img-slot { aspect-ratio: 1 / 1; height: 140px; background: #1a1a2e; margin: 0 auto 10px auto; border-radius: 12px; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid #16213e; }
         .img-slot img { width: 100%; height: 100%; object-fit: cover; }
@@ -80,52 +168,60 @@
         .hp-bar { width: 160px; height: 14px; background: #333; border-radius: 7px; border: 1px solid #444; overflow: hidden; }
         .hp-fill { height: 100%; width: 100%; background: var(--hp-green); transition: 0.4s; }
         
-        .battle-area { 
-            height: 180px; 
-            display: flex; 
-            justify-content: space-around; 
-            align-items: center; 
-            border-radius: 15px;
-            margin-bottom: 10px;
-            background-color: var(--floor);
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-            border: 2px solid rgba(255,255,255,0.2);
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
-            transition: background 0.5s ease;
-        }
-        
-        #p-box { transform: scaleX(1); }
-        #e-box { transform: scaleX(-1); }
-        .flip-right { transform: scaleX(-1) !important; }
-
+        .battle-area { height: 180px; display: flex; justify-content: space-around; align-items: center; border-radius: 15px; margin-bottom: 10px; background-color: var(--floor); border: 2px solid rgba(255,255,255,0.2); box-shadow: inset 0 0 50px rgba(0,0,0,0.5); }
         .sprite-box { width: 130px; height: 130px; background: rgba(26, 26, 46, 0.4); border-radius: 15px; display: flex; align-items: center; justify-content: center; transition: 0.3s; overflow: hidden; border: 2px solid rgba(255,255,255,0.1); backdrop-filter: blur(2px); }
         .sprite-box img { width: 100%; height: 100%; object-fit: cover; }
-        
+
         .status-tag { font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; display: none; margin-top: 5px; }
         .shield-active { background: var(--gold); color: black; display: inline-block; }
 
         #battle-log { background: #0f3460; padding: 10px; height: 45px; border-radius: 8px; margin: 10px 0; font-size: 0.9rem; border: 1px solid #333; }
         .move-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
-        .btn { position: relative; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; text-transform: uppercase; overflow: hidden; }
+        .btn { position: relative; background: var(--accent); color: white; border: none; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: bold; text-transform: uppercase; }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-        .cd-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--gold); }
+        
+        .back-btn { background: #333; margin-top: 10px; }
 
+        .cd-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: var(--gold); border-radius: 6px; }
+
+        @keyframes core-flicker { 0% { transform: scale(1); opacity: 0.5; } 100% { transform: scale(1.2); opacity: 0.8; } }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(1.1); } to { opacity: 1; transform: scale(1); } }
         .attack-left { animation: atkL 0.4s ease; }
         .attack-right { animation: atkR 0.4s ease; }
         .shake { animation: shk 0.3s ease; }
-        .crit-shake { animation: shk 0.15s ease infinite; }
-
         @keyframes atkL { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(35px); } }
         @keyframes atkR { 0%, 100% { transform: scaleX(-1) translateX(0); } 50% { transform: scaleX(-1) translateX(35px); } }
         @keyframes shk { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
-
-        #result-overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); border-radius:18px; display:none; flex-direction:column; align-items:center; justify-content:center; z-index:999; }
     </style>
 </head>
-<body>
+<body onload="loadGameData()">
+
+<div id="title-screen">
+    <div class="core-glow"></div>
+    <div class="game-logo">
+        <span class="logo-top">Core</span>
+        <span class="logo-bottom">Clash</span>
+    </div>
+    <div class="game-subtitle"></div>
+    <button class="start-btn" onclick="showIdentityScreen()">Initiate Battle</button>
+</div>
+
+<div id="identity-screen">
+    <h2>Identify Yourself, Hero</h2>
+    <input type="text" id="player-name-input" class="name-input" placeholder="Enter Name..." maxlength="12">
+    <button class="start-btn" onclick="saveName()">Enter Nexus</button>
+</div>
+
+<button id="profile-btn" onclick="toggleProfile()">👤</button>
+<div id="profile-modal">
+    <strong id="display-name" style="color: var(--gold); font-size: 1.2rem;">Hero</strong>
+    <hr style="border: 0; border-top: 1px solid #333; margin: 10px 0;">
+    <div style="font-size: 0.8rem; line-height: 1.6;">
+        Wins: <span id="prof-streak">0</span><br>
+        Defeats: <span id="prof-loss">0</span>
+    </div>
+</div>
 
 <div id="game-viewport">
     <div id="stats-bar">
@@ -134,15 +230,27 @@
     </div>
 
     <div id="skill-info-window">
-        <div id="info-header" class="info-header"></div>
-        <div id="info-lore" class="info-lore"></div>
-        <div id="info-data" class="info-data"></div>
+        <div id="info-header" style="color:var(--gold); font-weight:bold; font-size:1.1rem; border-bottom:1px solid #333; margin-bottom:8px;"></div>
+        <div id="info-lore" style="font-style:italic; font-size:0.8rem; color:#aaa; margin-bottom:10px;"></div>
+        <div id="info-data" style="font-size:0.85rem; border-top:1px solid #333; padding-top:8px;"></div>
     </div>
 
     <div id="result-overlay">
-        <h1 id="res-title"></h1>
-        <p id="res-msg" style="margin-bottom: 20px;"></p>
-        <button class="btn" style="background:var(--gold); color:black; padding:15px 40px" onclick="resetGame()">CONTINUE JOURNEY</button>
+        <h1 id="res-title">VICTORY</h1>
+        <div class="res-stats-box">
+            <p id="res-msg" style="font-size: 1.1rem; color: #ccc; margin-top: 0;"></p>
+            <div style="display: flex; justify-content: space-around; border-top: 1px solid #333; padding-top: 15px;">
+                <div>
+                    <small style="display:block; color: #888;">STREAK</small>
+                    <strong id="final-streak" style="font-size: 1.5rem; color: var(--gold);">0</strong>
+                </div>
+                <div>
+                    <small style="display:block; color: #888;">TOTAL DEFEATS</small>
+                    <strong id="final-defeats" style="font-size: 1.5rem; color: var(--hp-red);">0</strong>
+                </div>
+            </div>
+        </div>
+        <button class="rematch-btn" onclick="resetGame()">Continue Journey</button>
     </div>
 
     <div id="selection-screen" class="screen active">
@@ -157,9 +265,10 @@
 
     <div id="loadout-screen" class="screen">
         <h2 id="loadout-title">Customize Moves</h2>
-        <p>Choose 4 abilities to take into battle (<span id="move-count">0</span>/4)</p>
+        <p>Choose 4 abilities (<span id="move-count">0</span>/4)</p>
         <div id="move-selection-grid" class="grid"></div>
         <button id="start-btn" class="btn" style="margin-top:20px; width:100%" disabled onclick="initBattle()">ENTER ARENA</button>
+        <button class="btn back-btn" style="width:100%" onclick="goBackToSelection()">BACK TO HEROES</button>
     </div>
 
     <div id="battle-screen" class="screen">
@@ -188,54 +297,97 @@
 <script>
     const MOVES_DB = {
         'FIRE': [
-            {n:'Ember', p:15, t:'atk', d:'Small flames that deal reliable damage.', l:'A basic spark technique used by fire-mages to light the dark paths of volcanic caves.'}, 
-            {n:'Fire Blast', p:35, t:'atk', d:'A massive blast of fire with high power.', l:'Unleashes a star-shaped explosion that incinerates everything in its central radius.'}, 
-            {n:'Flame Charge', p:22, t:'atk', d:'A physical fire tackle with moderate force.', l:'The user cloaks themselves in a thermal aura and tackles at high speeds.'},
-            {n:'Burn Up', p:45, t:'atk', d:'Unleashes all heat for maximum damage.', l:'A forbidden move that converts all internal thermal energy into one final pillar of flame.'}, 
-            {n:'Ignite Soul', p:30, t:'heal', d:'Inner warmth restores 30 HP. (2 Turn Cooldown)', l:'The user focuses their heartbeat to regenerate tissues via rapid cauterization.'}, 
-            {n:'Heat Veil', p:0, t:'def', d:'Steam shield: Next hit taken is halved. (2 Turn Cooldown)', l:'Creates a shimmering curtain of extreme heat that distorts and weakens incoming projectiles.'}
+            {n:'Ember', p:15, t:'atk', d:'Reliable fire damage.', l:'Basic spark technique.'}, 
+            {n:'Fire Blast', p:35, t:'atk', d:'Massive explosion.', l:'Incinerates everything.'}, 
+            {n:'Flame Charge', p:22, t:'atk', d:'Fast thermal tackle.', l:'Cloaks user in heat.'},
+            {n:'Burn Up', p:45, t:'atk', d:'Maximum heat damage. Cooldown: 1 turn.', l:'Forbidden pillar of flame.', cdLimit: 2}, 
+            {n:'Ignite Soul', p:30, t:'heal', d:'Restores 30 HP.', l:'Rapid tissue cauterization.'}, 
+            {n:'Heat Veil', p:0, t:'def', d:'Halves next hit.', l:'Distorts incoming attacks.'}
         ],
         'WATER': [
-            {n:'Bubble', p:15, t:'atk', d:'Light pressure bubbles that pop for damage.', l:'High-tension liquid spheres that create localized sonic booms upon popping.'}, 
-            {n:'Hydro Pump', p:35, t:'atk', d:'High-pressure water jet that blasts foes.', l:'A blast of water strong enough to pierce through solid steel plating.'}, 
-            {n:'Water Pulse', p:22, t:'atk', d:'Sends out a rhythmic wave of water.', l:'Creates ultrasonic vibrations within a jet of water to damage the enemy internally.'},
-            {n:'Tsunami', p:45, t:'atk', l:'Summons the weight of the entire ocean to crush the opponent.', d:'Absolute hydro-dominance dealing massive impact damage.'}, 
-            {n:'Aqua Ring', p:30, t:'heal', d:'Healing water swirls to restore 30 HP. (2 Turn Cooldown)', l:'Surrounds the user in a veil of life-giving water that accelerates natural recovery.'}, 
-            {n:'Mist Guard', p:0, t:'def', d:'Mist makes hits slide off, halving damage. (2 Turn Cooldown)', l:'Thick fog covers the area, causing enemy strikes to lose momentum and focus.'}
+            {n:'Bubble', p:15, t:'atk', d:'Pressure bubbles.', l:'High-tension liquid spheres.'}, 
+            {n:'Hydro Pump', p:35, t:'atk', d:'High-pressure jet.', l:'Pierces through solid steel.'}, 
+            {n:'Water Pulse', p:22, t:'atk', d:'Rhythmic sonic wave.', l:'Ultrasonic vibrations.'},
+            {n:'Tsunami', p:45, t:'atk', d:'Crushing ocean weight. Cooldown: 1 turn.', l:'Summons the deep sea.', cdLimit: 2}, 
+            {n:'Aqua Ring', p:30, t:'heal', d:'Restores 30 HP.', l:'Life-giving water veil.'}, 
+            {n:'Mist Guard', p:0, t:'def', d:'Halves next hit.', l:'Thick fog dampens focus.'}
         ],
         'GRASS': [
-            {n:'Vine Whip', p:15, t:'atk', d:'Strikes the foe with thin, tough vines.', l:'Two long, whip-like vines are lashed at the target with surgical precision.'}, 
-            {n:'Solar Beam', p:35, t:'atk', d:'Concentrated light energy deals high damage.', l:'The user harvests photons from the sky and fires them as a concentrated beam of heat.'}, 
-            {n:'Razor Leaf', p:22, t:'atk', d:'Sharp-edged leaves slice the opponent.', l:'Launches diamond-hard leaves that rotate like saws to cut through defenses.'},
-            {n:'Petal Dance', p:45, t:'atk', d:'A beautiful but lethal storm of petals.', l:'A hypnotic cyclone of razor-sharp petals that overwhelms the target\'s senses.'}, 
-            {n:'Synthesis', p:30, t:'heal', d:'Photosynthesis restores 30 HP. (2 Turn Cooldown)', l:'Converts ambient light directly into biological energy to repair physical wounds.'}, 
-            {n:'Leaf Shield', p:0, t:'def', d:'Dense foliage absorbs 50% of the next hit. (2 Turn Cooldown)', l:'Interlocking magical leaves create a wooden barrier as strong as reinforced concrete.'}
+            {n:'Vine Whip', p:15, t:'atk', d:'Surgical vine strike.', l:'Precision lashes.'}, 
+            {n:'Solar Beam', p:35, t:'atk', d:'Concentrated light.', l:'Harvests photons.'}, 
+            {n:'Razor Leaf', p:22, t:'atk', d:'Slices opponent.', l:'Diamond-hard leaves.'},
+            {n:'Petal Dance', p:45, t:'atk', d:'Lethal storm. Cooldown: 1 turn.', l:'Hypnotic razor cyclone.', cdLimit: 2}, 
+            {n:'Synthesis', p:30, t:'heal', d:'Restores 30 HP.', l:'Converts light to energy.'}, 
+            {n:'Leaf Shield', p:0, t:'def', d:'Halves next hit.', l:'Interlocking magical wood.'}
         ],
         'ELECTRIC': [
-            {n:'Spark', p:15, t:'atk', d:'A quick electrical zap for light damage.', l:'A low-voltage discharge designed to disrupt the target\'s muscle movements.'}, 
-            {n:'Thunder', p:35, t:'atk', d:'Crashing lightning bolt with heavy power.', l:'Summons a literal bolt from the sky, striking with the power of a thousand storms.'}, 
-            {n:'Shock Wave', p:22, t:'atk', d:'A wave of electricity that cannot miss.', l:'A circular blast of electromagnetic energy that expands in all directions simultaneously.'},
-            {n:'Volt Tackle', p:45, t:'atk', d:'Maximum voltage charge for huge damage.', l:'The user becomes a living lightning bolt, charging through the enemy at terminal velocity.'}, 
-            {n:'Recharge', p:30, t:'heal', d:'Draws power from the air to restore 30 HP. (2 Turn Cooldown)', l:'Absorbs free electrons from the atmosphere to replenish internal energy reserves.'}, 
-            {n:'Static Field', p:0, t:'def', d:'Electrical field reduces next hit by 50%. (2 Turn Cooldown)', l:'An invisible wall of static electricity that pushes away and dampens incoming force.'}
+            {n:'Spark', p:15, t:'atk', d:'Electrical zap.', l:'Disrupts muscle movement.'}, 
+            {n:'Thunder', p:35, t:'atk', d:'Lightning bolt.', l:'Power of a thousand storms.'}, 
+            {n:'Shock Wave', p:22, t:'atk', d:'Expanding blast.', l:'Electromagnetic pulse.'},
+            {n:'Volt Tackle', p:45, t:'atk', d:'Maximum voltage. Cooldown: 1 turn.', l:'User becomes lightning.', cdLimit: 2}, 
+            {n:'Recharge', p:30, t:'heal', d:'Restores 30 HP.', l:'Absorbs free electrons.'}, 
+            {n:'Static Field', p:0, t:'def', d:'Halves next hit.', l:'Wall of pure static.'}
         ]
     };
 
     const CHART = { 'FIRE':{'GRASS':2,'WATER':0.5}, 'WATER':{'FIRE':2,'GRASS':0.5}, 'GRASS':{'WATER':2,'FIRE':0.5}, 'ELECTRIC':{'WATER':2} };
+    const MAX_HP = 150;
+    let player, enemy, pHP=MAX_HP, eHP=MAX_HP, pShield=false, eShield=false, selectedMoves=[];
+    let winStreak = 0, totalDefeats = 0, playerName = "Hero";
 
-    let player, enemy, pHP=100, eHP=100, pShield=false, eShield=false, selectedMoves=[];
-    let winStreak = 0, totalDefeats = 0;
+    // --- SAVE AND LOAD SYSTEM ---
+    function saveGameData() {
+        localStorage.setItem('coreClash_name', playerName);
+        localStorage.setItem('coreClash_streak', winStreak);
+        localStorage.setItem('coreClash_defeats', totalDefeats);
+    }
+
+    function loadGameData() {
+        const savedName = localStorage.getItem('coreClash_name');
+        const savedStreak = localStorage.getItem('coreClash_streak');
+        const savedDefeats = localStorage.getItem('coreClash_defeats');
+
+        if (savedName) playerName = savedName;
+        if (savedStreak) winStreak = parseInt(savedStreak);
+        if (savedDefeats) totalDefeats = parseInt(savedDefeats);
+
+        document.getElementById('display-name').innerText = playerName;
+        updateUI();
+    }
+    // ----------------------------
+
+    function startGame() { document.getElementById('title-screen').classList.add('hidden'); }
+    
+    function showIdentityScreen() {
+        document.getElementById('title-screen').classList.add('hidden');
+        document.getElementById('identity-screen').style.display = 'flex';
+    }
+
+    function saveName() {
+        const val = document.getElementById('player-name-input').value;
+        if(val) playerName = val;
+        document.getElementById('display-name').innerText = playerName;
+        document.getElementById('identity-screen').style.display = 'none';
+        saveGameData();
+    }
+
+    function toggleProfile() {
+        const modal = document.getElementById('profile-modal');
+        modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
+        document.getElementById('prof-streak').innerText = winStreak;
+        document.getElementById('prof-loss').innerText = totalDefeats;
+    }
+
+    function goBackToSelection() {
+        document.getElementById('loadout-screen').classList.remove('active');
+        document.getElementById('selection-screen').classList.add('active');
+    }
 
     function showSkillInfo(move) {
         const win = document.getElementById('skill-info-window');
         document.getElementById('info-header').innerText = move.n;
         document.getElementById('info-lore').innerText = move.l;
-        document.getElementById('info-data').innerHTML = `
-            <strong>Type:</strong> ${move.t.toUpperCase()}<br>
-            <strong>Power:</strong> ${move.p > 0 ? move.p : 'Utility'}<br>
-            <strong>Status:</strong> ${move.cd > 0 ? 'COOLDOWN ('+move.cd+' turns)' : 'Ready'}<br>
-            <strong>Effect:</strong> ${move.d}
-        `;
+        document.getElementById('info-data').innerHTML = `Type: ${move.t.toUpperCase()}<br>Power: ${move.p > 0 ? move.p : 'Utility'}<br>Status: ${move.cd > 0 ? move.cd + ' turns' : 'Ready'}<br>Effect: ${move.d}`;
         win.classList.add('active');
     }
 
@@ -245,13 +397,6 @@
         player = { type, allMoves: MOVES_DB[type], img: type.toLowerCase()+'.png' };
         if(type === 'ELECTRIC') player.img = 'elec.png';
         selectedMoves = [];
-        const arena = document.getElementById('arena');
-        switch(type) {
-            case 'FIRE': arena.style.backgroundImage = "url('fire_bg.png')"; break;
-            case 'WATER': arena.style.backgroundImage = "url('water_bg.png')"; break;
-            case 'GRASS': arena.style.backgroundImage = "url('grass_bg.png')"; break;
-            case 'ELECTRIC': arena.style.backgroundImage = "url('elec_bg.png')"; break;
-        }
         document.getElementById('selection-screen').classList.remove('active');
         document.getElementById('loadout-screen').classList.add('active');
         const grid = document.getElementById('move-selection-grid');
@@ -261,7 +406,7 @@
             div.className = 'move-card';
             div.onmouseover = () => showSkillInfo(m);
             div.onmouseout = hideSkillInfo;
-            div.innerHTML = `<strong>${m.n}</strong><br><small>${m.t=='atk'?'Dmg: '+m.p : m.t=='heal'?'Heal: '+m.p : 'Blocks 50%'}</small>`;
+            div.innerHTML = `<strong>${m.n}</strong><br><small>${m.t=='atk'?'Dmg: '+m.p : m.t=='heal'?'Heal: '+m.p : 'Shield'}</small>`;
             div.onclick = () => toggleMove(i, div);
             grid.appendChild(div);
         });
@@ -283,25 +428,18 @@
     }
 
     function initBattle() {
-        pHP=100; eHP=100; pShield=false; eShield=false;
+        pHP=MAX_HP; eHP=MAX_HP; pShield=false; eShield=false;
         selectedMoves.forEach(m => m.cd = 0);
-        const types = Object.keys(MOVES_DB);
-        const randT = types[Math.floor(Math.random()*4)];
-        let enemyImg = randT.toLowerCase() + '.png';
-        if (randT === 'ELECTRIC') enemyImg = 'elec.png';
-        enemy = { type: randT, moves: MOVES_DB[randT].sort(() => 0.5 - Math.random()).slice(0, 4), img: enemyImg };
+        const randT = Object.keys(MOVES_DB)[Math.floor(Math.random()*4)];
+        enemy = { type: randT, moves: MOVES_DB[randT].sort(() => 0.5 - Math.random()).slice(0, 4), img: randT.toLowerCase() + '.png' };
+        if(randT === 'ELECTRIC') enemy.img = 'elec.png';
         document.getElementById('loadout-screen').classList.remove('active');
         document.getElementById('battle-screen').classList.add('active');
-        document.getElementById('p-name').innerText = player.type;
+        document.getElementById('p-name').innerText = playerName + " (" + player.type + ")";
         document.getElementById('e-name').innerText = enemy.type;
-        const pImgEl = document.getElementById('p-img');
-        const eImgEl = document.getElementById('e-img');
-        pImgEl.src = player.img;
-        eImgEl.src = enemy.img;
-        if(player.type !== 'FIRE') pImgEl.classList.add('flip-right');
-        else pImgEl.classList.remove('flip-right');
+        document.getElementById('p-img').src = player.img;
+        document.getElementById('e-img').src = enemy.img;
         updateUI();
-        log("A challenger appears!");
         renderBattleMoves();
         document.getElementById('move-controls').style.pointerEvents = 'all';
     }
@@ -333,16 +471,16 @@
         if(move.t === 'atk') {
             document.getElementById('p-box').classList.add('attack-left');
             let dmg = move.p * (CHART[player.type]?.[enemy.type] || 1);
-            let isCrit = Math.random() < 0.25;
-            if(isCrit) dmg *= 2;
+            if(Math.random() < 0.25) dmg *= 2;
             if(eShield) { dmg *= 0.5; eShield = false; }
             eHP -= dmg;
-            log(isCrit ? `💥 CRITICAL! ${move.n} did massive damage!` : `You used ${move.n}!`);
-            setTimeout(() => document.getElementById('e-box').classList.add(isCrit ? 'crit-shake' : 'shake'), 200);
+            log(`You used ${move.n}!`);
+            if(move.cdLimit) move.cd = move.cdLimit; 
+            setTimeout(() => document.getElementById('e-box').classList.add('shake'), 200);
         } else if(move.t === 'heal') {
-            pHP = Math.min(100, pHP + move.p);
+            pHP = Math.min(MAX_HP, pHP + move.p);
             move.cd = 3; 
-            log(`You used ${move.n} and healed!`);
+            log(`You healed!`);
         } else {
             pShield = true;
             move.cd = 3; 
@@ -357,19 +495,13 @@
             if(eMove.t === 'atk') {
                 document.getElementById('e-box').classList.add('attack-right');
                 let dmg = eMove.p * (CHART[enemy.type]?.[player.type] || 1);
-                let isEnemyCrit = Math.random() < 0.25;
-                if(isEnemyCrit) dmg *= 2;
                 if(pShield) { dmg *= 0.5; pShield = false; }
                 pHP -= dmg;
-                log(isEnemyCrit ? `⚠️ CRITICAL! Enemy ${eMove.n} hit hard!` : `Enemy used ${eMove.n}!`);
-                setTimeout(() => document.getElementById('p-box').classList.add(isEnemyCrit ? 'crit-shake' : 'shake'), 200);
+                log(`Enemy used ${eMove.n}!`);
+                setTimeout(() => document.getElementById('p-box').classList.add('shake'), 200);
             } else if(eMove.t === 'heal') { 
-                eHP = Math.min(100, eHP + eMove.p); 
-                log(`Enemy used ${eMove.n} to recover!`);
-            } else { 
-                eShield = true; 
-                log(`Enemy used ${eMove.n} to defend!`);
-            }
+                eHP = Math.min(MAX_HP, eHP + eMove.p); 
+            } else { eShield = true; }
             updateUI();
             renderBattleMoves();
             if(pHP <= 0) return endBattle(false);
@@ -377,9 +509,32 @@
         }, 1200);
     }
 
+    function endBattle(win) {
+        const overlay = document.getElementById('result-overlay');
+        overlay.style.display = 'flex';
+        const title = document.getElementById('res-title');
+        const msg = document.getElementById('res-msg');
+        if (win) {
+            winStreak++;
+            title.innerText = "VICTORY";
+            title.style.color = "var(--gold)";
+            msg.innerText = `The ${enemy.type} champion has been eclipsed.`;
+        } else {
+            winStreak = 0; 
+            totalDefeats++;
+            title.innerText = "DEFEATED";
+            title.style.color = "var(--hp-red)";
+            msg.innerText = "Your elemental core has destabilized.";
+        }
+        document.getElementById('final-streak').innerText = winStreak;
+        document.getElementById('final-defeats').innerText = totalDefeats;
+        saveGameData();
+        updateUI();
+    }
+
     function updateUI() {
-        document.getElementById('p-hp-fill').style.width = Math.max(0, pHP) + "%";
-        document.getElementById('e-hp-fill').style.width = Math.max(0, eHP) + "%";
+        document.getElementById('p-hp-fill').style.width = (Math.max(0, pHP) / MAX_HP * 100) + "%";
+        document.getElementById('e-hp-fill').style.width = (Math.max(0, eHP) / MAX_HP * 100) + "%";
         document.getElementById('p-shield').className = pShield ? "status-tag shield-active" : "status-tag";
         document.getElementById('e-shield').className = eShield ? "status-tag shield-active" : "status-tag";
         document.getElementById('streak-val').innerText = winStreak;
@@ -388,44 +543,14 @@
 
     function log(m) { document.getElementById('battle-log').innerText = m; }
     function clearAnims() { 
-        document.getElementById('p-box').classList.remove('attack-left','shake', 'crit-shake');
-        document.getElementById('e-box').classList.remove('attack-right','shake', 'crit-shake');
-    }
-
-    function endBattle(win) {
-        const overlay = document.getElementById('result-overlay');
-        overlay.style.display = 'flex';
-        
-        if (win) {
-            winStreak++;
-            document.getElementById('res-title').innerText = "VICTORY!";
-            document.getElementById('res-title').style.color = "var(--gold)";
-            document.getElementById('res-msg').innerText = `You defeated the ${enemy.type} enemy! Streak: ${winStreak}`;
-        } else {
-            winStreak = 0; // Reset streak on loss
-            totalDefeats++;
-            document.getElementById('res-title').innerText = "DEFEATED";
-            document.getElementById('res-title').style.color = "var(--hp-red)";
-            document.getElementById('res-msg').innerText = "Your journey ends here... for now.";
-        }
-        updateUI();
+        document.getElementById('p-box').classList.remove('attack-left','shake');
+        document.getElementById('e-box').classList.remove('attack-right','shake');
     }
 
     function resetGame() {
-        pHP = 100;
-        eHP = 100;
-        pShield = false;
-        eShield = false;
-        selectedMoves = [];
-        Object.values(MOVES_DB).forEach(typeMoves => {
-            typeMoves.forEach(m => m.cd = 0);
-        });
         document.getElementById('result-overlay').style.display = 'none';
         document.getElementById('battle-screen').classList.remove('active');
         document.getElementById('selection-screen').classList.add('active');
-        document.getElementById('arena').style.backgroundImage = 'none';
-        clearAnims();
-        updateUI();
     }
 </script>
 </body>
