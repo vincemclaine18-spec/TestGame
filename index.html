@@ -331,11 +331,12 @@
     };
 
     const CHART = { 'FIRE':{'GRASS':2,'WATER':0.5}, 'WATER':{'FIRE':2,'GRASS':0.5}, 'GRASS':{'WATER':2,'FIRE':0.5}, 'ELECTRIC':{'WATER':2} };
+    const B_COLORS = { 'FIRE':'#401010', 'WATER':'#102040', 'GRASS':'#103010', 'ELECTRIC':'#404010' };
     const MAX_HP = 150;
+    
     let player, enemy, pHP=MAX_HP, eHP=MAX_HP, pShield=false, eShield=false, selectedMoves=[];
     let winStreak = 0, totalDefeats = 0, playerName = "Hero";
 
-    // --- SAVE AND LOAD SYSTEM ---
     function saveGameData() {
         localStorage.setItem('coreClash_name', playerName);
         localStorage.setItem('coreClash_streak', winStreak);
@@ -346,18 +347,13 @@
         const savedName = localStorage.getItem('coreClash_name');
         const savedStreak = localStorage.getItem('coreClash_streak');
         const savedDefeats = localStorage.getItem('coreClash_defeats');
-
         if (savedName) playerName = savedName;
         if (savedStreak) winStreak = parseInt(savedStreak);
         if (savedDefeats) totalDefeats = parseInt(savedDefeats);
-
         document.getElementById('display-name').innerText = playerName;
         updateUI();
     }
-    // ----------------------------
 
-    function startGame() { document.getElementById('title-screen').classList.add('hidden'); }
-    
     function showIdentityScreen() {
         document.getElementById('title-screen').classList.add('hidden');
         document.getElementById('identity-screen').style.display = 'flex';
@@ -435,6 +431,7 @@
         if(randT === 'ELECTRIC') enemy.img = 'elec.png';
         document.getElementById('loadout-screen').classList.remove('active');
         document.getElementById('battle-screen').classList.add('active');
+        document.getElementById('arena').style.backgroundColor = B_COLORS[player.type];
         document.getElementById('p-name').innerText = playerName + " (" + player.type + ")";
         document.getElementById('e-name').innerText = enemy.type;
         document.getElementById('p-img').src = player.img;
